@@ -72,9 +72,45 @@ public class Driver {
         System.out.println(secondsD + " seconds");
 
         // Task E
+        
+        Job jobE = Job.getInstance(conf, "Favorites Analysis");
+        jobE.setJarByClass(TaskE.class);
+        FileInputFormat.addInputPath(jobE, new Path(args[4]));
+        FileOutputFormat.setOutputPath(jobE, new Path(args[5]));
+        jobE.setMapperClass(TaskE.FavoritesMapper.class);
+        jobE.setReducerClass(TaskE.FavoritesReducer.class);
+        jobE.setOutputKeyClass(Text.class);
+        jobE.setOutputValueClass(Text.class);
 
+        long timeStartE = System.currentTimeMillis();
+        boolean jobESuccess = jobE.waitForCompletion(true);
+        long timeFinishE = System.currentTimeMillis();
+        System.out.println("Favorites Analysis job " + (jobESuccess ? "Succeeded" : "Failed"));
+        System.out.println((timeFinishE - timeStartE) / 1000.0 + " seconds");
+
+        
         // Task F
+        Job jobF = Job.getInstance(conf, "Friends Analysis");
+        jobF.setJarByClass(TaskF.class);
 
+        // Using MultipleInputs for TaskF
+        MultipleInputs.addInputPath(jobF, new Path(args[6]), TextInputFormat.class, TaskF.FriendsMapper.class);
+        MultipleInputs.addInputPath(jobF, new Path(args[7]), TextInputFormat.class, TaskF.AccessLogsMapper.class);
+        MultipleInputs.addInputPath(jobF, new Path(args[8]), TextInputFormat.class, TaskF.PagesMapper.class);
+
+        FileOutputFormat.setOutputPath(jobF, new Path(args[9]));
+        jobF.setReducerClass(TaskF.FriendsReducer.class);
+        jobF.setOutputKeyClass(Text.class);
+        jobF.setOutputValueClass(Text.class);
+        
+        long timeStartE = System.currentTimeMillis();
+        boolean jobESuccess = jobE.waitForCompletion(true);
+        long timeFinishE = System.currentTimeMillis();
+        System.out.println("Favorites Analysis job " + (jobESuccess ? "Succeeded" : "Failed"));
+        System.out.println((timeFinishE - timeStartE) / 1000.0 + " seconds");
+        
+
+      
         // Task G
         Job jobG = Job.getInstance(conf, "Disconnected Users");
         jobG.setJarByClass(DisconnectedUsers.class);
