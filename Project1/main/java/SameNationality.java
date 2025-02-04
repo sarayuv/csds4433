@@ -40,24 +40,4 @@ public class SameNationality {
             }
         }
     }
-
-    public static void main(String[] args) throws Exception {
-        Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Same Nationality");
-        job.setJarByClass(SameNationality.class);
-
-        FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-
-        job.setMapperClass(SameNationalityMapper.class);
-        job.setReducerClass(SameNationalityReducer.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
-
-        if (job.waitForCompletion(true)) {
-            System.exit(0);
-        } else {
-            System.exit(1);
-        }
-    }
 }
