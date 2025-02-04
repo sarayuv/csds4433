@@ -9,6 +9,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import java.io.IOException;
 
+// TASK D
+
 public class ConnectednessFactor {
     public static class ConnectednessFactorMapper extends Mapper<Object, Text, Text, IntWritable> {
         private final IntWritable one = new IntWritable(1);
@@ -16,10 +18,10 @@ public class ConnectednessFactor {
         @Override
         public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
-            String[] attributes = line.split(",");
+            String[] fields = line.split(",");
 
-            if (attributes.length >= 3) {
-                context.write(new Text(attributes[1]), one);
+            if (fields.length >= 3) {
+                context.write(new Text(fields[1]), one);
             }
         }
     }
