@@ -12,6 +12,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class Driver {
     public static void main(String[] args) throws Exception {
+        long timeNow;
         Configuration conf = new Configuration();
 
         // Task A
@@ -23,8 +24,14 @@ public class Driver {
         jobA.setReducerClass(SameNationality.SameNationalityReducer.class);
         jobA.setOutputKeyClass(Text.class);
         jobA.setOutputValueClass(Text.class);
+
         boolean jobASuccess = jobA.waitForCompletion(true);
         System.out.println("Same Nationality job " + (jobASuccess ? "Succeeded" : "Failed"));
+
+        long timeFinishA = System.currentTimeMillis();
+        timeNow = System.currentTimeMillis();
+        double secondsA = (timeFinishA - timeNow) / 1000.0;
+        System.out.println(secondsA + " seconds");
 
         // Task B
 
@@ -45,8 +52,14 @@ public class Driver {
         jobA.setReducerClass(ConnectednessFactor.ConnectednessFactorReducer.class);
         jobA.setOutputKeyClass(Text.class);
         jobA.setOutputValueClass(Text.class);
+
         boolean jobGSuccess = jobA.waitForCompletion(true);
         System.out.println("Connectedness Factor job " + (jobGSuccess ? "Succeeded" : "Failed"));
+
+        long timeFinishG = System.currentTimeMillis();
+        timeNow = System.currentTimeMillis();
+        double secondsG = (timeFinishG - timeNow) / 1000.0;
+        System.out.println(secondsG + " seconds");
 
         // Task H
 
