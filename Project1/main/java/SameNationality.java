@@ -8,6 +8,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import java.io.IOException;
 
+// TASK A
+
 public class SameNationality {
 
     public static class SameNationalityMapper extends Mapper<Object, Text, Text, Text> {
@@ -16,12 +18,13 @@ public class SameNationality {
         @Override
         public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
-            String[] attributes = line.split(",");
+            String[] fields = line.split(",");
 
-            if (attributes.length >= 5) {
-                String nationality = attributes[2].trim();
-                String name = attributes[1].trim();
-                String data = attributes[4].trim();
+            if (fields.length >= 5) {
+                String nationality = fields[2].trim();
+                String name = fields[1].trim();
+                String data = fields[4].trim();
+
                 if (NATIONALITY.equalsIgnoreCase(nationality)) {
                     context.write(new Text(name), new Text(data));
                 }
@@ -43,14 +46,18 @@ public class SameNationality {
         Job job = Job.getInstance(conf, "Same Nationality");
         job.setJarByClass(SameNationality.class);
 
-        FileInputFormat.addInputPath(job, new Path(args[1]));
-        FileOutputFormat.setOutputPath(job, new Path(args[2]));
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
         job.setMapperClass(SameNationalityMapper.class);
         job.setReducerClass(SameNationalityReducer.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
+        if (job.waitForCompletion(true)) {
+            System.exit(0);
+        } else {
+            System.exit(1);
+        }
     }
 }
