@@ -36,6 +36,22 @@ public class Driver {
         // Task B
 
         // Task C
+        Job jobC = Job.getInstance(conf, "Citizens Per Country");
+        jobC.setJarByClass(TaskC.class);
+        FileInputFormat.addInputPath(jobC, new Path(args[2]));
+        FileOutputFormat.setOutputPath(jobC, new Path(args[3]));
+        jobC.setMapperClass(TaskC.CitizensMapper.class);
+        jobC.setReducerClass(TaskC.CitizensReducer.class);
+        jobC.setOutputKeyClass(Text.class);
+        jobC.setOutputValueClass(IntWritable.class);
+
+        long timeStartC = System.currentTimeMillis();
+        boolean jobCSuccess = jobC.waitForCompletion(true);
+        long timeFinishC = System.currentTimeMillis();
+        double secondsC = (timeFinishC - timeStartC) / 1000.0;
+
+        System.out.println("Citizens Per Country job " + (jobCSuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsC + " seconds");
 
         // Task D
         Job jobD = Job.getInstance(conf, "Connectedness Factor");
