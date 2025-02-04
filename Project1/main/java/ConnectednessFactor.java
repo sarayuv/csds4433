@@ -35,25 +35,4 @@ public class ConnectednessFactor {
             context.write(key, new IntWritable(sum));
         }
     }
-
-    public static void main(String[] args) throws Exception {
-        Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Connectedness Factor");
-        job.setJarByClass(ConnectednessFactor.class);
-
-        FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-
-        job.setMapperClass(ConnectednessFactorMapper.class);
-        job.setCombinerClass(ConnectednessFactorReducer.class);
-        job.setReducerClass(ConnectednessFactorReducer.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(IntWritable.class);
-
-        if (job.waitForCompletion(true)) {
-            System.exit(0);
-        } else {
-            System.exit(1);
-        }
-    }
 }
