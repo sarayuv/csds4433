@@ -52,7 +52,7 @@ public class DisconnectedUsers {
 
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
-            BufferedReader br = new BufferedReader(new FileReader("data/pages.csv"));
+            BufferedReader br = new BufferedReader(new FileReader("input/pages.csv"));
             String line;
             while ((line = br.readLine()) != null) {
                 String[] fields = line.split(",");
@@ -63,26 +63,6 @@ public class DisconnectedUsers {
                 }
             }
             br.close();
-        }
-    }
-
-    public static void main(String[] args) throws Exception {
-        Configuration conf = new Configuration();
-        Job job = Job.getInstance(conf, "Disconnected Users");
-        job.setJarByClass(DisconnectedUsers.class);
-
-        FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
-
-        job.setMapperClass(DisconnectedUsersMapper.class);
-        job.setReducerClass(DisconnectedUsersReducer.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
-
-        if (job.waitForCompletion(true)) {
-            System.exit(0);
-        } else {
-            System.exit(1);
         }
     }
 }
