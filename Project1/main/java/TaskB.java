@@ -70,7 +70,7 @@ public class TaskB {
     // Reducer Class
     public static class MostAccessedReducer extends Reducer<Text, Text, Text, Text> {
 
-        private TreeMap<String, String> pages = new TreeMap<>(Collections.reverseOrder());
+        private TreeMap<Integer, String> pages = new TreeMap<>(Collections.reverseOrder());
 
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context)
@@ -86,7 +86,7 @@ public class TaskB {
                 }
             }
 
-            pages.put(Integer.toString(count), deets);
+            pages.put(count, deets);
 
             if(pages.size() > 10){
                 pages.remove(pages.lastKey());
@@ -95,8 +95,8 @@ public class TaskB {
 
         protected void cleanup(Context context) throws IOException, InterruptedException {
 
-            for(Map.Entry<String, String> entry : pages.entrySet()){
-                context.write(new Text(entry.getKey()), new Text(entry.getValue()));
+            for(Map.Entry<Integer, String> entry : pages.entrySet()){
+                context.write(new Text(entry.getKey().toString()), new Text(entry.getValue()));
             }
 
         }
@@ -114,20 +114,20 @@ public class TaskB {
         // Create and configure the job
         Job job = Job.getInstance(conf, "Top 10 Accessed Pages");
         job.setJarByClass(TaskB.class);
-        job.setMapperClass(MostAccessedMapper.class);
-        job.setReducerClass(MostAccessedReducer.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
-
+        
         // Define input and output paths
         MultipleInputs.addInputPath(job, new Path("access_logs.csv"), TextInputFormat.class, MostAccessedMapper.class);
         MultipleInputs.addInputPath(job, new Path("pages.csv"), TextInputFormat.class, PageMapper.class);
         Path outputPath = new Path("output_TaskB");
         System.out.println("Output Path: " + outputPath);
 
+//        job.setMapperClass(MostAccessedMapper.class);
+        job.setReducerClass(MostAccessedReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        
         // Set input and output paths
         FileOutputFormat.setOutputPath(job, outputPath);
-
 
         // Print job configuration
         System.out.println("Job Configuration: " + job.getConfiguration());
