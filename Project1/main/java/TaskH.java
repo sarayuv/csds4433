@@ -71,7 +71,7 @@ public class TaskH {
 
 
     // Reducer Class
-    public static class MorePopularReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+    public static class MorePopularReducer extends Reducer<Text, Text, Text, IntWritable> {
 
         private HashMap<String, Integer> friends = new HashMap<>();
         private HashMap<String, String> people = new HashMap<>();
@@ -96,7 +96,7 @@ public class TaskH {
 
         }
 
-        protected void sort(Context context) throws IOException, InterruptedException {
+        protected void cleanup(Context context) throws IOException, InterruptedException {
             int average = 0;
 
             for(int num : friends.values()){
