@@ -2,14 +2,10 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class TaskG {
     public static class TaskGMapper extends Mapper<LongWritable, Text, Text, Text> {
@@ -38,27 +34,41 @@ public class TaskG {
         }
     }
 
-    public static class TaskGReducer extends Reducer<Text, Text, Text, Text> {
-        private final Set<String> recentAccessIds = new HashSet<>();
-
+    public static class PagesMapper extends Mapper<LongWritable, Text, Text, Text> {
         @Override
-        protected void reduce(Text key, Iterable<Text> values, Context context) {
-            recentAccessIds.add(key.toString());
+        protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String[] fields = value.toString().split(",");
+            if (fields.length < 2) return;
+
+            String personId = fields[0].trim();
+            String name = fields[1].trim();
+
+            if (key.get() == 0 && value.toString().contains("personId")) {
+                return;
+            }
+
+            context.write(new Text(personId), new Text("name:" + name));
         }
+    }
 
+    public static class TaskGReducer extends Reducer<Text, Text, Text, Text> {
         @Override
-        protected void cleanup(Context context) throws IOException, InterruptedException {
-            BufferedReader br = new BufferedReader(new FileReader("input/pages.csv"));
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] fields = line.split(",");
-                String personId = fields[0];
-                String name = fields[1];
-                if (!recentAccessIds.contains(personId)) {
-                    context.write(new Text(personId), new Text(name));
+        protected void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            boolean isActive = false;
+            String name = "Unknown";
+
+            for (Text val : values) {
+                String valStr = val.toString();
+                if (valStr.equals("active")) {
+                    isActive = true;
+                } else if (valStr.startsWith("name:")) {
+                    name = valStr.substring(5);
                 }
             }
-            br.close();
+
+            if (!isActive) {
+                context.write(key, new Text(name));
+            }
         }
     }
 }
