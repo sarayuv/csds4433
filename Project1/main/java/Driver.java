@@ -172,7 +172,7 @@ public class Driver {
         System.out.println(secondsH + " seconds");
 
         // Final Exit
-        if (jobASuccess && jobDSuccess && jobGSuccess) {
+        if (jobASuccess && jobBSuccess && jobCSuccess && jobDSuccess && jobESuccess && jobFSuccess && jobGSuccess && jobHSuccess) {
             System.exit(0);
         } else {
             System.exit(1);
