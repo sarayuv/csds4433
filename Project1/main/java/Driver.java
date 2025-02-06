@@ -4,12 +4,9 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-
-/**
- * HOW TO RUN IN TERMINAL
- * hadoop jar your-jar-file.jar /input/path1 /output/path1 /input/path2 /output/path2
- */
 
 public class Driver {
     public static void main(String[] args) throws Exception {
@@ -17,11 +14,12 @@ public class Driver {
 
         // Task A
         Job jobA = Job.getInstance(conf, "Same Nationality");
-        jobA.setJarByClass(SameNationality.class);
-        FileInputFormat.addInputPath(jobA, new Path(args[0]));
-        FileOutputFormat.setOutputPath(jobA, new Path(args[1]));
-        jobA.setMapperClass(SameNationality.SameNationalityMapper.class);
-        jobA.setReducerClass(SameNationality.SameNationalityReducer.class);
+        jobA.setJarByClass(TaskA.class);
+        FileInputFormat.addInputPath(jobA, new Path("/user/cs4433/project1/input/pages.csv"));
+        FileOutputFormat.setOutputPath(jobA, new Path("/user/cs4433/project1/output/taskA"));
+
+        jobA.setMapperClass(TaskA.TaskAMapper.class);
+        jobA.setReducerClass(TaskA.TaskAReducer.class);
         jobA.setOutputKeyClass(Text.class);
         jobA.setOutputValueClass(Text.class);
 
@@ -30,18 +28,31 @@ public class Driver {
         long timeFinishA = System.currentTimeMillis();
         double secondsA = (timeFinishA - timeStartA) / 1000.0;
 
-        System.out.println("Same Nationality job " + (jobASuccess ? "Succeeded" : "Failed"));
-        System.out.println(secondsA + " seconds");
-
         // Task B
+        Job jobB = Job.getInstance(conf, "Top 10 Accessed Pages");
+        jobB.setJarByClass(TaskB.class);
+        MultipleInputs.addInputPath(jobB, new Path("/user/cs4433/project1/input/access_logs.csv"), TextInputFormat.class, TaskB.MostAccessedMapper.class);
+        MultipleInputs.addInputPath(jobB, new Path("/user/cs4433/project1/input/pages.csv"), TextInputFormat.class, TaskB.PageMapper.class);
+        FileOutputFormat.setOutputPath(jobB, new Path ("/user/cs4433/project1/output/TaskB"));
+
+        jobB.setMapperClass(TaskB.MostAccessedMapper.class);
+        jobB.setReducerClass(TaskB.MostAccessedReducer.class);
+        jobB.setOutputKeyClass(Text.class);
+        jobB.setOutputValueClass(Text.class);
+
+        long timeStartB = System.currentTimeMillis();
+        boolean jobBSuccess = jobB.waitForCompletion(true);
+        long timeFinishB = System.currentTimeMillis();
+        double secondsB = (timeFinishB - timeStartB) / 1000.0;
 
         // Task C
         Job jobC = Job.getInstance(conf, "Citizens Per Country");
         jobC.setJarByClass(TaskC.class);
-        FileInputFormat.addInputPath(jobC, new Path(args[2]));
-        FileOutputFormat.setOutputPath(jobC, new Path(args[3]));
-        jobC.setMapperClass(TaskC.CitizensMapper.class);
-        jobC.setReducerClass(TaskC.CitizensReducer.class);
+        FileInputFormat.addInputPath(jobC, new Path("/user/cs4433/project1/input/pages.csv"));
+        FileOutputFormat.setOutputPath(jobC, new Path("/user/cs4433/project1/output/taskC"));
+
+        jobC.setMapperClass(TaskC.TaskCMapper.class);
+        jobC.setReducerClass(TaskC.TaskCReducer.class);
         jobC.setOutputKeyClass(Text.class);
         jobC.setOutputValueClass(IntWritable.class);
 
@@ -50,16 +61,14 @@ public class Driver {
         long timeFinishC = System.currentTimeMillis();
         double secondsC = (timeFinishC - timeStartC) / 1000.0;
 
-        System.out.println("Citizens Per Country job " + (jobCSuccess ? "Succeeded" : "Failed"));
-        System.out.println(secondsC + " seconds");
-
         // Task D
         Job jobD = Job.getInstance(conf, "Connectedness Factor");
-        jobD.setJarByClass(ConnectednessFactor.class);
-        FileInputFormat.addInputPath(jobD, new Path(args[2]));
-        FileOutputFormat.setOutputPath(jobD, new Path(args[3]));
-        jobD.setMapperClass(ConnectednessFactor.ConnectednessFactorMapper.class);
-        jobD.setReducerClass(ConnectednessFactor.ConnectednessFactorReducer.class);
+        jobD.setJarByClass(TaskD.class);
+        FileInputFormat.addInputPath(jobD, new Path("/user/cs4433/project1/input/access_logs.csv"));
+        FileOutputFormat.setOutputPath(jobD, new Path("/user/cs4433/project1/output/taskD"));
+
+        jobD.setMapperClass(TaskD.TaskDMapper.class);
+        jobD.setReducerClass(TaskD.TaskDReducer.class);
         jobD.setOutputKeyClass(Text.class);
         jobD.setOutputValueClass(IntWritable.class);
 
@@ -68,56 +77,48 @@ public class Driver {
         long timeFinishD = System.currentTimeMillis();
         double secondsD = (timeFinishD - timeStartD) / 1000.0;
 
-        System.out.println("Connectedness Factor job " + (jobDSuccess ? "Succeeded" : "Failed"));
-        System.out.println(secondsD + " seconds");
-
         // Task E
-        
         Job jobE = Job.getInstance(conf, "Favorites Analysis");
         jobE.setJarByClass(TaskE.class);
-        FileInputFormat.addInputPath(jobE, new Path(args[4]));
-        FileOutputFormat.setOutputPath(jobE, new Path(args[5]));
-        jobE.setMapperClass(TaskE.FavoritesMapper.class);
-        jobE.setReducerClass(TaskE.FavoritesReducer.class);
+        FileInputFormat.addInputPath(jobE, new Path("/user/cs4433/project1/input/access_logs.csv"));
+        FileOutputFormat.setOutputPath(jobE, new Path("/user/cs4433/project1/output/taskE"));
+
+        jobE.setMapperClass(TaskE.TaskEMapper.class);
+        jobE.setReducerClass(TaskE.TaskEReducer.class);
         jobE.setOutputKeyClass(Text.class);
         jobE.setOutputValueClass(Text.class);
 
         long timeStartE = System.currentTimeMillis();
         boolean jobESuccess = jobE.waitForCompletion(true);
         long timeFinishE = System.currentTimeMillis();
-        System.out.println("Favorites Analysis job " + (jobESuccess ? "Succeeded" : "Failed"));
-        System.out.println((timeFinishE - timeStartE) / 1000.0 + " seconds");
+        double secondsE = (timeFinishE - timeStartE) / 1000.0;
 
-        
         // Task F
         Job jobF = Job.getInstance(conf, "Friends Analysis");
         jobF.setJarByClass(TaskF.class);
+        MultipleInputs.addInputPath(jobF, new Path("/user/cs4433/project1/input/friends.csv"), TextInputFormat.class, TaskF.FriendsMapper.class);
+        MultipleInputs.addInputPath(jobF, new Path("/user/cs4433/project1/input/access_logs.csv"), TextInputFormat.class, TaskF.AccessLogsMapper.class);
+        MultipleInputs.addInputPath(jobF, new Path("/user/cs4433/project1/input/pages.csv"), TextInputFormat.class, TaskF.PagesMapper.class);
+        FileOutputFormat.setOutputPath(jobF, new Path("/user/cs4433/project1/output/TaskF"));
 
-        // Using MultipleInputs for TaskF
-        MultipleInputs.addInputPath(jobF, new Path(args[6]), TextInputFormat.class, TaskF.FriendsMapper.class);
-        MultipleInputs.addInputPath(jobF, new Path(args[7]), TextInputFormat.class, TaskF.AccessLogsMapper.class);
-        MultipleInputs.addInputPath(jobF, new Path(args[8]), TextInputFormat.class, TaskF.PagesMapper.class);
-
-        FileOutputFormat.setOutputPath(jobF, new Path(args[9]));
         jobF.setReducerClass(TaskF.FriendsReducer.class);
         jobF.setOutputKeyClass(Text.class);
         jobF.setOutputValueClass(Text.class);
-        
-        long timeStartE = System.currentTimeMillis();
-        boolean jobESuccess = jobE.waitForCompletion(true);
-        long timeFinishE = System.currentTimeMillis();
-        System.out.println("Favorites Analysis job " + (jobESuccess ? "Succeeded" : "Failed"));
-        System.out.println((timeFinishE - timeStartE) / 1000.0 + " seconds");
-        
 
-      
+        long timeStartF = System.currentTimeMillis();
+        boolean jobFSuccess = jobF.waitForCompletion(true);
+        long timeFinishF = System.currentTimeMillis();
+        double secondsF = (timeFinishF - timeStartF) / 1000.0;
+
         // Task G
         Job jobG = Job.getInstance(conf, "Disconnected Users");
-        jobG.setJarByClass(DisconnectedUsers.class);
-        FileInputFormat.addInputPath(jobG, new Path(args[4]));
-        FileOutputFormat.setOutputPath(jobG, new Path(args[5]));
-        jobG.setMapperClass(DisconnectedUsers.DisconnectedUsersMapper.class);
-        jobG.setReducerClass(DisconnectedUsers.DisconnectedUsersReducer.class);
+        jobG.setJarByClass(TaskG.class);
+
+        MultipleInputs.addInputPath(jobG, new Path("/user/cs4433/project1/input/friends.csv"), TextInputFormat.class, TaskG.TaskGMapper.class);
+        MultipleInputs.addInputPath(jobG, new Path("/user/cs4433/project1/input/pages.csv"), TextInputFormat.class, TaskG.PagesMapper.class);
+        FileOutputFormat.setOutputPath(jobG, new Path("/user/cs4433/project1/output/taskG"));
+
+        jobG.setReducerClass(TaskG.TaskGReducer.class);
         jobG.setOutputKeyClass(Text.class);
         jobG.setOutputValueClass(Text.class);
 
@@ -126,10 +127,49 @@ public class Driver {
         long timeFinishG = System.currentTimeMillis();
         double secondsG = (timeFinishG - timeStartG) / 1000.0;
 
+        // Task H
+        Job jobH = Job.getInstance(conf, "Popular Users");
+        jobH.setJarByClass(TaskH.class);
+        MultipleInputs.addInputPath(jobH, new Path("/user/cs4433/project1/input//friends.csv"), TextInputFormat.class, TaskH.MorePopularMapper.class);
+        MultipleInputs.addInputPath(jobH, new Path("/user/cs4433/project1/input/pages.csv"), TextInputFormat.class, TaskH.NameMapper.class);
+        FileOutputFormat.setOutputPath(jobH, new Path("/user/cs4433/project1/output/taskH"));
+
+        jobH.setMapperClass(TaskH.MorePopularMapper.class);
+        jobH.setReducerClass(TaskH.MorePopularReducer.class);
+        jobH.setMapOutputKeyClass(Text.class);
+        jobH.setMapOutputValueClass(Text.class);
+        jobH.setOutputKeyClass(Text.class);
+        jobH.setOutputValueClass(IntWritable.class);
+
+        long timeStartH = System.currentTimeMillis();
+        boolean jobHSuccess = jobH.waitForCompletion(true);
+        long timeFinishH = System.currentTimeMillis();
+        double secondsH = (timeFinishH - timeStartH) / 1000.0;
+
+        // Final Prints
+        System.out.println("Same Nationality job " + (jobASuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsA + " seconds");
+
+        System.out.println("Top 10 Accessed Pages job " + (jobBSuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsB + " seconds");
+
+        System.out.println("Citizens Per Country job " + (jobCSuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsC + " seconds");
+
+        System.out.println("Connectedness Factor job " + (jobDSuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsD + " seconds");
+
+        System.out.println("Favorites Analysis job " + (jobESuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsE + " seconds");
+
+        System.out.println("Friends Analysis job " + (jobFSuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsF + " seconds");
+
         System.out.println("Disconnected Users job " + (jobGSuccess ? "Succeeded" : "Failed"));
         System.out.println(secondsG + " seconds");
 
-        // Task H
+        System.out.println("Popular Users job " + (jobHSuccess ? "Succeeded" : "Failed"));
+        System.out.println(secondsH + " seconds");
 
         // Final Exit
         if (jobASuccess && jobDSuccess && jobGSuccess) {
