@@ -35,7 +35,6 @@ public class Driver {
         MultipleInputs.addInputPath(jobB, new Path("/user/cs4433/project1/input/pages.csv"), TextInputFormat.class, TaskB.PageMapper.class);
         FileOutputFormat.setOutputPath(jobB, new Path ("/user/cs4433/project1/output/TaskB"));
 
-        jobB.setMapperClass(TaskB.MostAccessedMapper.class);
         jobB.setReducerClass(TaskB.MostAccessedReducer.class);
         jobB.setOutputKeyClass(Text.class);
         jobB.setOutputValueClass(Text.class);
