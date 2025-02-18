@@ -1,0 +1,140 @@
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import java.io.*;
+import java.util.*;
+
+public class clustering {
+    private static final String SEED_PATH = "/Users/kashvi/Desktop/kAsHvI/college/Big Data/Project2/output/seeds.txt";
+    private static final String DATA_PATH = "/Users/kashvi/Desktop/kAsHvI/college/Big Data/Project2/output/dataset.txt";
+    private static final String OUTPUT_PATH = "/Users/kashvi/Desktop/kAsHvI/college/Big Data/Project2/output/kmeans_output";
+    private static final int MAX_ITERATIONS = 20;
+    private static final double THRESHOLD = 0.001;
+
+    public static class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Text> {
+        private List<double[]> centroids = new ArrayList<>();
+
+        @Override
+        protected void setup(Context context) throws IOException {
+            Path centroidPath = new Path(SEED_PATH);
+            FileSystem fs = FileSystem.get(context.getConfiguration());
+            BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(centroidPath)));
+            String line;
+            while ((line = br.readLine()) != null) {
+                centroids.add(parsePoint(line));
+            }
+            br.close();
+        }
+
+        @Override
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            double[] point = parsePoint(value.toString());
+            int nearestCentroid = findNearestCentroid(point);
+            context.write(new IntWritable(nearestCentroid), value);
+        }
+
+        private int findNearestCentroid(double[] point) {
+            int nearestIndex = 0;
+            double minDistance = Double.MAX_VALUE;
+            for (int i = 0; i < centroids.size(); i++) {
+                double distance = 0.0;
+                for (int j = 0; j < point.length; j++) {
+                    distance += Math.pow(point[j] - centroids.get(i)[j], 2);
+                }
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestIndex = i;
+                }
+            }
+            return nearestIndex;
+        }
+
+        private double[] parsePoint(String line) {
+            String[] tokens = line.split(",");
+            double[] point = new double[tokens.length];
+            for (int i = 0; i < tokens.length; i++) {
+                point[i] = Double.parseDouble(tokens[i]);
+            }
+            return point;
+        }
+    }
+
+    public static class KMeansReducer extends Reducer<IntWritable, Text, IntWritable, Text> {
+        @Override
+        public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            List<double[]> points = new ArrayList<>();
+            int dimensions = 0;
+
+            for (Text value : values) {
+                double[] point = parsePoint(value.toString());
+                dimensions = point.length;
+                points.add(point);
+            }
+
+            double[] newCentroid = new double[dimensions];
+            for (double[] point : points) {
+                for (int i = 0; i < dimensions; i++) {
+                    newCentroid[i] += point[i];
+                }
+            }
+            for (int i = 0; i < dimensions; i++) {
+                newCentroid[i] /= points.size();
+            }
+
+            context.write(key, new Text(arrayToString(newCentroid)));
+        }
+
+        private static double[] parsePoint(String line) {
+            String[] tokens = line.split(",");
+            double[] point = new double[tokens.length];
+            for (int i = 0; i < tokens.length; i++) {
+                point[i] = Double.parseDouble(tokens[i]);
+            }
+            return point;
+        }
+
+        private String arrayToString(double[] arr) {
+            StringBuilder sb = new StringBuilder();
+            for (double val : arr) {
+                sb.append(val).append(",");
+            }
+            return sb.substring(0, sb.length() - 1);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        conf.set("centroid.path", SEED_PATH);
+
+        boolean converged = false;
+        int iteration = 0;
+
+        while (!converged && iteration < MAX_ITERATIONS) {
+            Job job = Job.getInstance(conf, "KMeans Iteration " + iteration);
+            job.setJarByClass(clustering.class);
+            job.setMapperClass(KMeansMapper.class);
+            job.setReducerClass(KMeansReducer.class);
+            job.setOutputKeyClass(IntWritable.class);
+            job.setOutputValueClass(Text.class);
+            FileInputFormat.addInputPath(job, new Path(DATA_PATH));
+            FileOutputFormat.setOutputPath(job, new Path(OUTPUT_PATH + iteration));
+            job.waitForCompletion(true);
+
+            converged = checkConvergence(OUTPUT_PATH + (iteration - 1), OUTPUT_PATH + iteration);
+            iteration++;
+        }
+    }
+
+    private static boolean checkConvergence(String prevPath, String newPath) throws IOException {
+        // Implementation to compare centroids from previous and current iterations
+        return false;
+    }
+}
