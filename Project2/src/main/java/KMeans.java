@@ -1,240 +1,267 @@
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import org.apache.hadoop.io.*;
+import org.apache.hadoop.mapreduce.*;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * running the program
- * a) single-iteration K-means -> set MAX_ITERATIONS = 1
- * b) multi-iteration K-means -> set MAX_ITERATIONS = 6
- * c) advanced K-means with convergence check -> set MAX_ITERATIONS = 20
- * d) output variations -> run with centers or points as a command-line argument to control the output
- *    hadoop jar KMeans.jar KMeans centers  # Output cluster centers
- *    hadoop jar KMeans.jar KMeans points   # Output clustered data points
- */
-
 public class KMeans {
-    private static final String SEED_PATH = "input/seeds.txt";
-    private static final String DATA_PATH = "input/dataset.txt";
-    private static final String OUTPUT_PATH = "output/";
-    private static final int MAX_ITERATIONS = 20;
-    private static final double THRESHOLD = 0.001;
+    public static final double THRESHOLD = 0.01; // Convergence threshold
 
-    // Mapper class
-    public static class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Text> {
-        private final List<double[]> centroids = new ArrayList<>();
+    // Define a class to represent a point in the dataset
+    public static class Point {
+        public double x;
+        public double y;
+
+        public Point(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
 
         @Override
-        protected void setup(Context context) throws IOException {
-            Path centroidPath = new Path(SEED_PATH);
-            FileSystem fs = FileSystem.get(context.getConfiguration());
-            BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(centroidPath)));
+        public String toString() {
+            return x + "," + y;
+        }
+
+        // Calculate Euclidean distance between two points
+        public double distanceTo(Point other) {
+            return Math.sqrt(Math.pow(x - other.x, 2) + Math.pow(y - other.y, 2));
+        }
+    }
+
+    // Define a class to represent a cluster centroid
+    public static class Centroid extends Point {
+        public int id;
+
+        public Centroid(int id, double x, double y) {
+            super(x, y);
+            this.id = id;
+        }
+
+        @Override
+        public String toString() {
+            return "Cluster ID: " + id + ", Coordinates: " + super.toString();
+        }
+    }
+
+    // Read points from a file
+    public static List<Point> readPoints(String filePath) throws IOException {
+        List<Point> points = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
-            while ((line = br.readLine()) != null) {
-                centroids.add(parsePoint(line));
+            while ((line = reader.readLine()) != null) {
+                // Split the line on tabs or commas
+                String[] parts = line.split("[\t,]"); // Handles both tabs and commas
+                double x = Double.parseDouble(parts[0]);
+                double y = Double.parseDouble(parts[1]);
+                points.add(new Point(x, y));
             }
-            br.close();
+        }
+        return points;
+    }
+
+    // Read centroids from a file
+    public static List<Centroid> readCentroids(String filePath) throws IOException {
+        List<Centroid> centroids = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            int id = 0;
+            while ((line = reader.readLine()) != null) {
+                // Split the line on tabs or commas
+                String[] parts = line.split("[\t,]"); // Handles both tabs and commas
+                double x = Double.parseDouble(parts[0]);
+                double y = Double.parseDouble(parts[1]);
+                centroids.add(new Centroid(id++, x, y));
+            }
+        }
+        return centroids;
+    }
+
+    // Mapper class for K-means
+    public static class KMeansMapper extends Mapper<LongWritable, Text, IntWritable, Point> {
+        private final List<Centroid> centroids = new ArrayList<>();
+
+        @Override
+        protected void setup(Context context) throws IOException, InterruptedException {
+            // Read centroids from the seeds file
+            Path seedsPath = new Path("input/seeds.txt");
+            FileSystem fs = FileSystem.get(context.getConfiguration());
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(fs.open(seedsPath)))) {
+                String line;
+                int id = 0;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(",");
+                    double x = Double.parseDouble(parts[0]);
+                    double y = Double.parseDouble(parts[1]);
+                    centroids.add(new Centroid(id++, x, y));
+                }
+            }
         }
 
         @Override
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            double[] point = parsePoint(value.toString());
-            int nearestCentroid = findNearestCentroid(point);
-            context.write(new IntWritable(nearestCentroid), value);
+        protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            // Parse the point from the input line
+            String[] parts = value.toString().split(",");
+            double x = Double.parseDouble(parts[0]);
+            double y = Double.parseDouble(parts[1]);
+            Point point = new Point(x, y);
+
+            // Find the nearest centroid
+            int nearestCentroidId = findNearestCentroid(point);
+
+            // Emit the nearest centroid ID and the point
+            context.write(new IntWritable(nearestCentroidId), point);
         }
 
-        private int findNearestCentroid(double[] point) {
-            int nearestIndex = 0;
+        private int findNearestCentroid(Point point) {
+            int nearestCentroidId = -1;
             double minDistance = Double.MAX_VALUE;
-            for (int i = 0; i < centroids.size(); i++) {
-                double distance = 0.0;
-                for (int j = 0; j < point.length; j++) {
-                    distance += Math.pow(point[j] - centroids.get(i)[j], 2);
-                }
+
+            for (Centroid centroid : centroids) {
+                double distance = point.distanceTo(centroid);
                 if (distance < minDistance) {
                     minDistance = distance;
-                    nearestIndex = i;
+                    nearestCentroidId = centroid.id;
                 }
             }
-            return nearestIndex;
-        }
 
-        private double[] parsePoint(String line) {
-            String[] tokens = line.split(",");
-            double[] point = new double[tokens.length];
-            for (int i = 0; i < tokens.length; i++) {
-                point[i] = Double.parseDouble(tokens[i]);
-            }
-            return point;
+            return nearestCentroidId;
         }
     }
 
-    // Reducer class
-    public static class KMeansReducer extends Reducer<IntWritable, Text, IntWritable, Text> {
+    // Reducer class for K-means
+    public static class KMeansReducer extends Reducer<IntWritable, Point, IntWritable, Centroid> {
         @Override
-        public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            List<double[]> points = new ArrayList<>();
-            int dimensions = 0;
+        protected void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
+            double sumX = 0.0;
+            double sumY = 0.0;
+            int count = 0;
 
-            for (Text value : values) {
-                double[] point = parsePoint(value.toString());
-                dimensions = point.length;
-                points.add(point);
+            // Calculate the new centroid by averaging the points
+            for (Point point : values) {
+                sumX += point.x;
+                sumY += point.y;
+                count++;
             }
 
-            double[] newCentroid = new double[dimensions];
-            for (double[] point : points) {
-                for (int i = 0; i < dimensions; i++) {
-                    newCentroid[i] += point[i];
-                }
-            }
-            for (int i = 0; i < dimensions; i++) {
-                newCentroid[i] /= points.size();
-            }
+            double newX = sumX / count;
+            double newY = sumY / count;
 
-            context.write(key, new Text(arrayToString(newCentroid)));
-        }
-
-        private static double[] parsePoint(String line) {
-            String[] tokens = line.split(",");
-            double[] point = new double[tokens.length];
-            for (int i = 0; i < tokens.length; i++) {
-                point[i] = Double.parseDouble(tokens[i]);
-            }
-            return point;
-        }
-
-        private static String arrayToString(double[] arr) {
-            StringBuilder sb = new StringBuilder();
-            for (double val : arr) {
-                sb.append(val).append(",");
-            }
-            return sb.substring(0, sb.length() - 1);
+            // Emit the new centroid
+            context.write(key, new Centroid(key.get(), newX, newY));
         }
     }
 
-    // Combiner class (for optimization)
-    public static class KMeansCombiner extends Reducer<IntWritable, Text, IntWritable, Text> {
+    // Combiner class for optimization
+    public static class KMeansCombiner extends Reducer<IntWritable, Point, IntWritable, Point> {
         @Override
-        public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            List<double[]> points = new ArrayList<>();
-            int dimensions = 0;
+        protected void reduce(IntWritable key, Iterable<Point> values, Context context) throws IOException, InterruptedException {
+            double sumX = 0.0;
+            double sumY = 0.0;
+            int count = 0;
 
-            for (Text value : values) {
-                double[] point = KMeansReducer.parsePoint(value.toString());
-                dimensions = point.length;
-                points.add(point);
+            // Aggregate points locally to reduce data sent to the reducer
+            for (Point point : values) {
+                sumX += point.x;
+                sumY += point.y;
+                count++;
             }
 
-            double[] newCentroid = new double[dimensions];
-            for (double[] point : points) {
-                for (int i = 0; i < dimensions; i++) {
-                    newCentroid[i] += point[i];
-                }
-            }
-            for (int i = 0; i < dimensions; i++) {
-                newCentroid[i] /= points.size();
-            }
+            double avgX = sumX / count;
+            double avgY = sumY / count;
 
-            context.write(key, new Text(KMeansReducer.arrayToString(newCentroid)));
+            // Emit the aggregated point
+            context.write(key, new Point(avgX, avgY));
         }
     }
 
-    // Method to check convergence
-    private static boolean checkConvergence(String prevPath, String newPath) throws IOException {
-        Configuration conf = new Configuration();
-        FileSystem fs = FileSystem.get(conf);
-
-        Path prevCentroidPath = new Path(prevPath + "/part-r-00000");
-        Path newCentroidPath = new Path(newPath + "/part-r-00000");
-
-        if (!fs.exists(prevCentroidPath) || !fs.exists(newCentroidPath)) {
-            return false;
-        }
-
-        BufferedReader prevReader = new BufferedReader(new InputStreamReader(fs.open(prevCentroidPath)));
-        BufferedReader newReader = new BufferedReader(new InputStreamReader(fs.open(newCentroidPath)));
-
-        String prevLine, newLine;
-        while ((prevLine = prevReader.readLine()) != null && (newLine = newReader.readLine()) != null) {
-            double[] prevCentroid = KMeansReducer.parsePoint(prevLine.split("\t")[1]);
-            double[] newCentroid = KMeansReducer.parsePoint(newLine.split("\t")[1]);
-
-            double distance = 0.0;
-            for (int i = 0; i < prevCentroid.length; i++) {
-                distance += Math.pow(prevCentroid[i] - newCentroid[i], 2);
-            }
-
-            if (distance > THRESHOLD) {
-                prevReader.close();
-                newReader.close();
-                return false;
-            }
-        }
-
-        prevReader.close();
-        newReader.close();
-        return true;
-    }
-
-    // Main method to run KMeans
+    // Main control program
     public static void main(String[] args) throws Exception {
-        Configuration conf = new Configuration();
-        conf.set("centroid.path", SEED_PATH);
+        if (args.length < 4) {
+            System.err.println("Usage: KMeansClustering <dataset path> <seeds path> <output path> <R>");
+            System.exit(1);
+        }
 
+        // Parse command-line arguments
+        String datasetPath = args[0]; // Input dataset path
+        String seedsPath = args[1]; // Path to the seeds file
+        String outputPath = args[2]; // Path to the output directory
+        int R = Integer.parseInt(args[3]); // Maximum number of iterations
+
+        // Read points and centroids
+        List<Point> points = readPoints(datasetPath);
+        List<Centroid> centroids = readCentroids(seedsPath);
+
+        // Run K-means clustering
         boolean converged = false;
-        int iteration = 0;
+        for (int iteration = 0; iteration < R; iteration++) { // Max 20 iterations
+            List<Centroid> newCentroids = new ArrayList<>();
 
-        while (!converged && iteration < MAX_ITERATIONS) {
-            Job job = Job.getInstance(conf, "KMeans Iteration " + iteration);
-            job.setJarByClass(KMeans.class);
-            job.setMapperClass(KMeansMapper.class);
-            job.setCombinerClass(KMeansCombiner.class); // Add combiner for optimization
-            job.setReducerClass(KMeansReducer.class);
-            job.setOutputKeyClass(IntWritable.class);
-            job.setOutputValueClass(Text.class);
-            FileInputFormat.addInputPath(job, new Path(DATA_PATH));
-            FileOutputFormat.setOutputPath(job, new Path(OUTPUT_PATH + iteration));
-            job.waitForCompletion(true);
+            // Assign points to the nearest centroid
+            for (Centroid centroid : centroids) {
+                double sumX = 0.0;
+                double sumY = 0.0;
+                int count = 0;
 
-            converged = checkConvergence(OUTPUT_PATH + (iteration - 1), OUTPUT_PATH + iteration);
-            iteration++;
+                for (Point point : points) {
+                    if (centroid.id == findNearestCentroid(point, centroids).id) {
+                        sumX += point.x;
+                        sumY += point.y;
+                        count++;
+                    }
+                }
+
+                // Calculate the new centroid
+                if (count > 0) {
+                    double newX = sumX / count;
+                    double newY = sumY / count;
+                    newCentroids.add(new Centroid(centroid.id, newX, newY));
+                } else {
+                    newCentroids.add(centroid); // Keep the old centroid if no points are assigned
+                }
+            }
+
+            // Check for convergence
+            converged = true;
+            for (int i = 0; i < centroids.size(); i++) {
+                if (centroids.get(i).distanceTo(newCentroids.get(i)) > THRESHOLD) {
+                    converged = false;
+                    break;
+                }
+            }
+
+            if (converged) {
+                System.out.println("Converged at iteration " + (iteration + 1));
+                break;
+            }
+
+            // Update centroids for the next iteration
+            centroids = newCentroids;
         }
 
-        // Output variations
-        if (args.length > 0 && args[0].equals("centers")) {
-            // Output only cluster centers and convergence status
-            System.out.println("Converged: " + converged);
-            Path finalCentroidPath = new Path(OUTPUT_PATH + (iteration - 1) + "/part-r-00000");
-            FileSystem fs = FileSystem.get(conf);
-            BufferedReader finalReader = new BufferedReader(new InputStreamReader(fs.open(finalCentroidPath)));
-            String line;
-            while ((line = finalReader.readLine()) != null) {
-                System.out.println(line);
+        // Write the final centroids to the output file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath + "/centroids.txt"))) {
+            for (Centroid centroid : centroids) {
+                writer.write(centroid.toString());
+                writer.newLine();
             }
-            finalReader.close();
-        } else if (args.length > 0 && args[0].equals("points")) {
-            // Output the final clustered data points along with their cluster centers
-            Path finalOutputPath = new Path(OUTPUT_PATH + (iteration - 1) + "/part-r-00000");
-            FileSystem fs = FileSystem.get(conf);
-            BufferedReader finalReader = new BufferedReader(new InputStreamReader(fs.open(finalOutputPath)));
-            String line;
-            while ((line = finalReader.readLine()) != null) {
-                System.out.println(line);
-            }
-            finalReader.close();
         }
+    }
+
+    // Find the nearest centroid for a given point
+    private static Centroid findNearestCentroid(Point point, List<Centroid> centroids) {
+        Centroid nearest = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Centroid centroid : centroids) {
+            double distance = point.distanceTo(centroid);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = centroid;
+            }
+        }
+
+        return nearest;
     }
 }
