@@ -6,6 +6,8 @@ import org.apache.hadoop.io.Writable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,8 +17,6 @@ public class KMeans {
     public static class Point implements Writable {
         public double x;
         public double y;
-
-        public Point() {}
 
         public Point(double x, double y) {
             this.x = x;
@@ -90,7 +90,7 @@ public class KMeans {
             // Find nearest centroid
             int nearestCentroidId = findNearestCentroid(point);
 
-            // Output nearest centroid ID and the point
+            // Output the nearest centroid ID and the point
             context.write(new IntWritable(nearestCentroidId), point);
         }
 
@@ -151,7 +151,7 @@ public class KMeans {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
-            System.err.println("Usage: KMeans <dataset path> <seeds path> <output path> <R>");
+            System.err.println("Usage: KMeans <dataset path> <seeds path> <output path> <R> [--advanced]");
             System.exit(1);
         }
 
@@ -161,8 +161,11 @@ public class KMeans {
         String outputPath = args[2];
         int R = Integer.parseInt(args[3]);
 
+        // Determine if advanced algorithm is being used
+        boolean isAdvancedAlgorithm = args.length > 4 && args[4].equals("--advanced");
+
         // Redirect System.out to a file
-        PrintStream fileOut = new PrintStream(new FileOutputStream(outputPath + "/output.txt"));
+        PrintStream fileOut = new PrintStream(Files.newOutputStream(Paths.get(outputPath + "/output.txt")));
         System.setOut(fileOut);
 
         // Read points and centroids
@@ -171,10 +174,10 @@ public class KMeans {
 
         // Run K-means clustering
         boolean converged = false;
-        for (int iteration = 0; iteration < R; iteration++) { // Max R iterations
+        for (int iteration = 0; iteration < R; iteration++) {
             List<Centroid> newCentroids = new ArrayList<>();
 
-            // Assign points to nearest centroid
+            // Assign points to the nearest centroid
             for (Centroid centroid : centroids) {
                 double sumX = 0.0;
                 double sumY = 0.0;
@@ -199,18 +202,20 @@ public class KMeans {
                 }
             }
 
-            // Check for convergence
-            converged = true;
-            for (int i = 0; i < centroids.size(); i++) {
-                if (centroids.get(i).euclideanDistance(newCentroids.get(i)) > THRESHOLD) {
-                    converged = false;
+            // Check for convergence (only in advanced algorithm)
+            if (isAdvancedAlgorithm) {
+                converged = true;
+                for (int i = 0; i < centroids.size(); i++) {
+                    if (centroids.get(i).euclideanDistance(newCentroids.get(i)) > THRESHOLD) {
+                        converged = false;
+                        break;
+                    }
+                }
+
+                if (converged) {
+                    System.out.println("Converged at iteration " + (iteration + 1));
                     break;
                 }
-            }
-
-            if (converged) {
-                System.out.println("Converged at iteration " + (iteration + 1));
-                break;
             }
 
             // Update centroids for next iteration
@@ -218,17 +223,21 @@ public class KMeans {
         }
 
         // Output Variation (a): Cluster centers with convergence status
-        System.out.println("Cluster Centers:");
-        for (Centroid centroid : centroids) {
-            System.out.println(centroid);
+        if (isAdvancedAlgorithm) {
+            System.out.println("Cluster Centers:");
+            for (Centroid centroid : centroids) {
+                System.out.println(centroid);
+            }
+            System.out.println("Converged: " + converged);
         }
-        System.out.println("Converged: " + converged);
 
         // Output Variation (b): Final clustered data points along with their cluster centers
-        System.out.println("Final Clustered Data Points:");
-        for (Point point : points) {
-            Centroid nearestCentroid = findNearestCentroid(point, centroids);
-            System.out.println("Point: " + point + ", Cluster: " + nearestCentroid.id);
+        if (isAdvancedAlgorithm) {
+            System.out.println("Final Clustered Data Points:");
+            for (Point point : points) {
+                Centroid nearestCentroid = findNearestCentroid(point, centroids);
+                System.out.println("Point: " + point + ", Cluster: " + nearestCentroid.id);
+            }
         }
 
         // Write final centroids to output file
