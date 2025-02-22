@@ -202,7 +202,7 @@ public class KMeans {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 2 || args.length > 4) {
-            System.err.println("Usage: KMeans <R> [--advanced]");
+            System.err.println("Usage: hadoop/bin/hadoop jar <jar path> KMeans <R> [--advanced]");
             System.exit(1);
         }
 
