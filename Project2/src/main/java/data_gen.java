@@ -2,11 +2,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
 
-/**
- * compile: javac data_gen.java
- * run: java data_gen 5 dataset.txt seeds.txt
- */
-
 public class data_gen {
     private static final int POINTS = 3000;
     private static final int MIN_VAL = 0;
@@ -14,21 +9,7 @@ public class data_gen {
     private static final int SEED_MIN = 0;
     private static final int SEED_MAX = 10000;
 
-    public static void main(String[] args) {
-        if (args.length < 2) {
-            System.out.println();
-            System.exit(1);
-        }
-
-        int K = Integer.parseInt(args[0]);
-        String dataFile = args[1];
-        String seedFile = args[2];
-
-        generate(dataFile, POINTS, MIN_VAL, MAX_VAL);
-        generateSeeds(seedFile, K, SEED_MIN, SEED_MAX);
-    }
-
-    private static void generate(String fileName, int size, int minVal, int maxVal) {
+    private static void generateDataset(String fileName, int size, int minVal, int maxVal) {
         Random random = new Random();
 
         try (FileWriter writer = new FileWriter(fileName)) {
@@ -38,7 +19,7 @@ public class data_gen {
                 writer.write(x + "," + y + "\n");
             }
         } catch (IOException e) {
-            System.err.println("Error writing data: " + e.getMessage());
+            System.err.println("Error writing dataset: " + e.getMessage());
         }
     }
 
@@ -54,5 +35,22 @@ public class data_gen {
         } catch (IOException e) {
             System.err.println("Error writing seeds: " + e.getMessage());
         }
+    }
+
+    public static void main(String[] args) {
+        if (args.length < 3) {
+            System.out.println("Usage: java data_gen <K> <dataset.txt> <seeds.txt>");
+            System.exit(1);
+        }
+
+        int K = Integer.parseInt(args[0]); // Number of clusters
+        String dataFile = args[1]; // Dataset file path
+        String seedFile = args[2]; // Seeds file path
+
+        // Generate dataset and seeds
+        generateDataset(dataFile, POINTS, MIN_VAL, MAX_VAL);
+        generateSeeds(seedFile, K, SEED_MIN, SEED_MAX);
+
+        System.out.println("Dataset and seeds generated successfully.");
     }
 }
