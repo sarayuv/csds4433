@@ -1,46 +1,43 @@
+//data files
+friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
+pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
+
 
 //TaskA
-raw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
-filter = FILTER raw BY nationality == 'Grenada';
-data = FOREACH filer GENERATE
-    name, hobby;
-STORE data INTO 'users.csv' USING PigStorage(',');
+clean1 = FILTER pagesRaw BY nationality == 'Grenada';
+data1 = FOREACH clean1 GENERATE name, hobby;
+STORE data1 INTO 'users.csv' USING PigStorage(',');
 
 
 //TaskB
-accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
-pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
 accesses = GROUP accessRaw BY whatPage;
 pageCounts = FOREACH accesses GENERATE group AS whatPage, COUNT(accessRaw) AS pagecount;
-sort = ORDER pageCounts BY pageCount DESC;
-topTen = LIMIT sort 10;
-join = JOIN topTen BY whatPage, pagesRaw BY personID;
-data = FOREACH join GENERATE
-    pagesRaw::personID AS personID, pagesRaw::name AS name, personID::nationanlity AS nationality;
-STORE data INTO 'top10.csv' USING PigStorage(',');
+sort2 = ORDER pageCounts BY pageCount DESC;
+topTen = LIMIT sort2 10;
+joinData2 = JOIN topTen BY whatPage, pagesRaw BY personID;
+data2 = FOREACH joinData2 GENERATE
+    pagesRaw::personID AS personID, pagesRaw::name AS name, pagesRaw::nationanlity AS nationality;
+STORE data2 INTO 'top10.csv' USING PigStorage(',');
 
 
 //TaskC
-raw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
-countries = GROUP raw BY countryCode;
-data = FOREACH countries GENERATE group AS countryCode, COUNT(raw) AS countryCounts
-STORE data INTO 'countryCounts.csv' USING PigStorage(',');
+countries = GROUP pagesRaw BY countryCode;
+data3 = FOREACH countries GENERATE group AS countryCode, COUNT(pagesRaw) AS countryCounts
+STORE data3 INTO 'countryCounts.csv' USING PigStorage(',');
 
 
 //TaskD
-friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
-pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
-friends = GROUP freindsRaw BY myFriend;
-data = FOREACH friends GENERATE group AS personID, COUNT(friendsRaw) AS count;
-join = JOIN pagesRaw BY personID LEFT OUTER, data BY personID;
+friends = GROUP friendsRaw BY myFriend;
+data4 = FOREACH friends GENERATE group AS personID, COUNT(friendsRaw) AS count;
+join4 = JOIN pagesRaw BY personID LEFT OUTER, data4 BY personID;
 zeroData = data::count IS NULL ? 0 : data::count;
-fdata = FOREACH join GENERATE
+fdata = FOREACH join4 GENERATE
     pagesRaw::personID AS personID, zeroData AS count;
 STORE fdata INTO 'connectedness.csv' USING PigStorage(',');
 
 
 //TaskE
-accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
 owner = GROUP accessRaw BY byWho;
 unique = GROUP accessRaw BY (byWho, whatPage);
 adata = FOREACH owner GENERATE
@@ -53,50 +50,43 @@ groupNow = GROUP ddata BY byWho;
 disData = FOREACH groupNow GENERATE
     group AS byWho,
     COUNT(ddata) AS distinctPages;
-join = JOIN adata BY byWho, disData BY byWho;
-fdata = FOREACH join GENERATE
+join5 = JOIN adata BY byWho, disData BY byWho;
+data5 = FOREACH join5 GENERATE
     adata::byWho AS byWho,
     adata::totalAccesses AS totalAccesses,
     disData::distinctPages AS distinctPages;
-STORE fdata INTO 'favorites.csv' USING PigStorage(',');
+STORE data5 INTO 'favorites.csv' USING PigStorage(',');
 
 
 //TaskF
-friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
-pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
-accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
 friends = FOREACH friendsRaw GENERATE personID, myFriend;
 logs = FOREACH accessRaw GENERATE byWho, whatPage;
-join = JOIN friends BY myFriend, logs BY byWho;
-fAccess = FOREACH join GENERATE
+join6 = JOIN friends BY myFriend, logs BY byWho;
+fAccess = FOREACH join6 GENERATE
     friends::personID AS personID,
     friends::myFriend AS myFriend;
 frAccess = DISTINCT fAccess;
-njoin = JOIN friends BY (personID, myFriend)
+join6 = JOIN friends BY (personID, myFriend)
     LEFT OUTER, frAccess BY (personID, myFriend);
-fNot = FILTER njoin BY frAccess::personID IS NULL;
-fjoin = JOIN fNot BY personID, pagesRaw BY personID;
-data = FOREACH fjoin GENERATE
+fNot = FILTER join6 BY frAccess::personID IS NULL;
+fjoin6 = JOIN fNot BY personID, pagesRaw BY personID;
+data6 = FOREACH fjoin6 GENERATE
     fNot::personID AS personID,
     pagesRaw::name AS name;
-STORE data INTO 'notAccessedFriends.csv' USING PigStorage(',');
+STORE data6 INTO 'notAccessedFriends.csv' USING PigStorage(',');
 
 
 //TaskG
-accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
-pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
 filterDate = FILTER accessRaw BY ToDate(accessTime) <  DATE_SUB('2025-02-22', '14');
 dPeople = DISTINCT FOREACH filterDate GENERATE byWho;
-join = JOIN dPeople BY byWho LEFT OUTER, pagesRaw BY personID;
-data = FOREACH join GENERATE
+join7 = JOIN dPeople BY byWho LEFT OUTER, pagesRaw BY personID;
+data7 = FOREACH join7 GENERATE
     dPeople::byWho AS personID,
     pagesRaw::name AS name;
-STORE data INTO 'disconnected.csv' USING PigStorage(',');
+STORE data7 INTO 'disconnected.csv' USING PigStorage(',');
 
 
 //TaskH
-friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
-pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
 friends = GROUP friendsRaw BY personID;
 data = FOREACH friends GENERATE
     group AS personID,
@@ -105,11 +95,10 @@ total = FOREACH (GROUP data ALL) GENERATE SUM(data.friendCount) AS tot;
 people = FOREACH (GROUP data ALL) GENERATE Count(data) AS peop;
 average = FOREACH (CROSS total, people) GENERATE total.tot / people.peop AS aver;
 datAvg = CROSS data, average;
-filter = FILTER datAvg BY friendCount > average.aver;
-join = JOIN filter BY personID LEFT OUTER, pagesRaw BY personID;
-fdata = FOREACH join GENERATE
-    filter::personID AS personID,
+filter8 = FILTER datAvg BY friendCount > average.aver;
+join8 = JOIN filter8 BY personID LEFT OUTER, pagesRaw BY personID;
+fdata8 = FOREACH join8 GENERATE
+    filter8::personID AS personID,
     pagesRaw::name AS name,
-    filter::friendCount AS friendCount;
-STORE fdata INTO 'popular.csv' USING PigStorage(',');
-
+    filter8::friendCount AS friendCount;
+STORE fdata8 INTO 'popular.csv' USING PigStorage(',');
