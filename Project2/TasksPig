@@ -61,7 +61,6 @@ fdata = FOREACH join GENERATE
 STORE fdata INTO 'favorites.csv' USING PigStorage(',');
 
 
-
 //TaskF
 friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
 pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
@@ -81,4 +80,16 @@ data = FOREACH fjoin GENERATE
     fNot::personID AS personID,
     pagesRaw::name AS name;
 STORE data INTO 'notAccessedFriends.csv' USING PigStorage(',');
+
+
+//TaskG
+accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
+pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+filterDate = FILTER accessRaw BY ToDate(accessTime) <  DATE_SUB('2025-02-22', '14');
+dPeople = DISTINCT FOREACH filterDate GENERATE byWho;
+join = JOIN dPeople BY byWho LEFT OUTER, pagesRaw BY personID;
+data = FOREACH join GENERATE
+    dPeople::byWho AS personID,
+    pagesRaw::name AS name;
+STORE data INTO 'disconnected.csv' USING PigStorage(',');
 
