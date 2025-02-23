@@ -93,3 +93,23 @@ data = FOREACH join GENERATE
     pagesRaw::name AS name;
 STORE data INTO 'disconnected.csv' USING PigStorage(',');
 
+
+//TaskH
+friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
+pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+friends = GROUP friendsRaw BY personID;
+data = FOREACH friends GENERATE
+    group AS personID,
+    COUNT(friendsRaw) AS friendCount;
+total = FOREACH (GROUP data ALL) GENERATE SUM(data.friendCount) AS tot;
+people = FOREACH (GROUP data ALL) GENERATE Count(data) AS peop;
+average = FOREACH (CROSS total, people) GENERATE total.tot / people.peop AS aver;
+datAvg = CROSS data, average;
+filter = FILTER datAvg BY friendCount > average.aver;
+join = JOIN filter BY personID LEFT OUTER, pagesRaw BY personID;
+fdata = FOREACH join GENERATE
+    filter::personID AS personID,
+    pagesRaw::name AS name,
+    filter::friendCount AS friendCount;
+STORE fdata INTO 'popular.csv' USING PigStorage(',');
+
