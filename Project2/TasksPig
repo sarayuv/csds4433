@@ -36,5 +36,27 @@ join = JOIN pagesRaw BY personID LEFT OUTER, data BY personID;
 zeroData = data::count IS NULL ? 0 : data::count;
 fdata = FOREACH join GENERATE
     pagesRaw::personID AS personID, zeroData AS count;
-STORE fdata INTO 'connectedness.vsv' USING PigStorage(',');
+STORE fdata INTO 'connectedness.csv' USING PigStorage(',');
+
+
+//TaskE
+accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
+owner = GROUP accessRaw BY byWho;
+unique = GROUP accessRaw BY (byWho, whatPage);
+adata = FOREACH owner GENERATE
+    group AS byWho,
+    COUNT(accessRaw) AS totalAccesses;
+ddata = FOREACH unique GENERATE
+    group.byWho AS byWho,
+    group.whatPage AS whatPage;
+groupNow = GROUP ddata BY byWho;
+disData = FOREACH groupNow GENERATE
+    group AS byWho,
+    COUNT(ddata) AS distinctPages;
+join = JOIN adata BY byWho, disData BY byWho;
+fdata = FOREACH join GENERATE
+    adata::byWho AS byWho,
+    adata::totalAccesses AS totalAccesses,
+    disData::distinctPages AS distinctPages;
+STORE fdata INTO 'favorites.csv' USING PigStorage(',');
 
