@@ -76,19 +76,17 @@ data6 = FOREACH fjoin6 GENERATE
 STORE data6 INTO '/user/cs4433/project2/facebook_analytics/output/notAccessedFriends.csv' USING PigStorage(',');
 
 
-/*
 -- TaskG
-refDate = ToDate('2025-02-22');
-accessRawWithDate = FOREACH accessRaw GENERATE *, ToDate(accessTime) AS accessDate;
-filterDate = FILTER accessRawWithDate BY DaysBetween(refDate, accessDate) > 14;
+dates = FOREACH accessRaw GENERATE byWho, ToDate(accessTime, 'yyyy-MM-dd HH:mm:ss') AS aDate;
+filterDate = FILTER dates BY aDate < SubtractDuration(currentTime(), '14d');
 dPeople = FOREACH filterDate GENERATE byWho;
-distinctPeople = DISTINCT dPeople;
-join7 = JOIN distinctPeople BY byWho LEFT OUTER, pagesRaw BY personID;
+dPeople = DISTINCT dPeople;
+join7 = JOIN dPeople BY byWho LEFT OUTER, pagesRaw BY personID;
 data7 = FOREACH join7 GENERATE
-    distinctPeople::byWho AS personID,
+    dPeople::byWho AS personID,
     pagesRaw::name AS name;
 STORE data7 INTO '/user/cs4433/project2/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
-*/
+
 
 
 /*
