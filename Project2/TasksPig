@@ -1,0 +1,27 @@
+
+//TaskA
+raw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+filter = FILTER raw BY nationality == 'Grenada';
+data = FOREACH filer GENERATE
+    name, hobby;
+STORE data INTO 'users.csv' USING PigStorage(',');
+
+
+//TaskB
+accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
+pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+accesses = GROUP accessRaw BY whatPage;
+pageCounts = FOREACH accesses GENERATE group AS whatPage, COUNT(accessRaw) AS pagecount;
+sort = ORDER pageCounts BY pageCount DESC;
+topTen = LIMIT sort 10;
+join = JOIN topTen BY whatPage, pagesRaw BY personID;
+data = FOREACH join GENERATE
+    pagesRaw::personID AS personID, pagesRaw::name AS name, personID::nationanlity AS nationality;
+STORE data INTO 'top10.csv' USING PigStorage(',');
+
+
+//TaskC
+raw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+countries = GROUP raw BY countryCode;
+data = FOREACH countries GENERATE group AS countryCode, COUNT(raw) AS countryCounts
+STORE data INTO 'countryCounts.csv' USING PigStorage(',');
