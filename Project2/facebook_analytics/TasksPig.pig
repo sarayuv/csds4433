@@ -88,22 +88,21 @@ data7 = FOREACH join7 GENERATE
 STORE data7 INTO '/user/cs4433/project2/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
 
 
-
-/*
 -- TaskH
 friends = GROUP friendsRaw BY personID;
 data = FOREACH friends GENERATE
     group AS personID,
     COUNT(friendsRaw) AS friendCount;
-total = FOREACH (GROUP data BY ALL) GENERATE SUM(data.friendCount) AS tot;
-people = FOREACH (GROUP data BY ALL) GENERATE COUNT(data) AS peop;
+grouped = GROUP data BY 1;
+total = FOREACH grouped GENERATE SUM(data.friendCount) AS tot;
+people = FOREACH (GROUP data BY 1) GENERATE COUNT(data) AS peop;
 crossData = CROSS total, people;
 average = FOREACH crossData GENERATE total.tot / people.peop AS aver;
 datAvg = CROSS data, average;
-filter8 = FILTER datAvg BY friendCount > average.aver;
-join8 = JOIN filter8 BY personID LEFT OUTER, pagesRaw BY personID;
+filter8 = FILTER datAvg BY data::friendCount > average::aver;
+join8 = JOIN filter8 BY data::personID LEFT OUTER, pagesRaw BY personID;
 fdata8 = FOREACH join8 GENERATE
-    filter8::personID AS personID,
+    filter8::data::personID AS personID,
     pagesRaw::name AS name,
-    filter8::friendCount AS friendCount;
-STORE fdata8 INTO '/user/cs4433/project2/facebook_analytics/output/popular.csv' USING PigStorage(',');*/
+    filter8::data::friendCount AS friendCount;
+STORE fdata8 INTO '/user/cs4433/project2/facebook_analytics/output/popular.csv' USING PigStorage(',');
