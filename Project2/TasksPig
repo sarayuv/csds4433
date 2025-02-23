@@ -25,3 +25,16 @@ raw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, co
 countries = GROUP raw BY countryCode;
 data = FOREACH countries GENERATE group AS countryCode, COUNT(raw) AS countryCounts
 STORE data INTO 'countryCounts.csv' USING PigStorage(',');
+
+
+//TaskD
+friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
+pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+friends = GROUP freindsRaw BY myFriend;
+data = FOREACH friends GENERATE group AS personID, COUNT(friendsRaw) AS count;
+join = JOIN pagesRaw BY personID LEFT OUTER, data BY personID;
+zeroData = data::count IS NULL ? 0 : data::count;
+fdata = FOREACH join GENERATE
+    pagesRaw::personID AS personID, zeroData AS count;
+STORE fdata INTO 'connectedness.vsv' USING PigStorage(',');
+
