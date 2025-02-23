@@ -76,7 +76,9 @@ STORE data6 INTO '/user/cs4433/project/facebook_analytics/output/notAccessedFrie
 
 
 -- TaskG
-filterDate = FILTER accessRaw BY ToDate(accessTime) < DATE_SUB('2025-02-22', '14');
+refDate = ToDate('2025-02-22', 'yyyy-MM-dd');
+accessRawWithDate = FOREACH accessRaw GENERATE *, ToDate(accessTime) AS accessDate;
+filterDate = FILTER accessRawWithDate BY DaysBetween(refDate, accessDate) > 14;
 dPeople = FOREACH filterDate GENERATE byWho;
 distinctPeople = DISTINCT dPeople;
 join7 = JOIN distinctPeople BY byWho LEFT OUTER, pagesRaw BY personID;
@@ -85,7 +87,7 @@ data7 = FOREACH join7 GENERATE
     pagesRaw::name AS name;
 STORE data7 INTO '/user/cs4433/project/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
 
-
+/*
 -- TaskH
 friends = GROUP friendsRaw BY personID;
 data = FOREACH friends GENERATE
@@ -102,4 +104,4 @@ fdata8 = FOREACH join8 GENERATE
     filter8::personID AS personID,
     pagesRaw::name AS name,
     filter8::friendCount AS friendCount;
-STORE fdata8 INTO '/user/cs4433/project/facebook_analytics/output/popular.csv' USING PigStorage(',');
+STORE fdata8 INTO '/user/cs4433/project/facebook_analytics/output/popular.csv' USING PigStorage(',');*/
