@@ -1,13 +1,13 @@
 -- data files
-friendsRaw = LOAD '/user/cs4433/project/facebook_analytics/friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, description);
-pagesRaw = LOAD '/user/cs4433/project/facebook_analytics/pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
-accessRaw = LOAD '/user/cs4433/project/facebook_analytics/access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
+friendsRaw = LOAD '/user/cs4433/project2/facebook_analytics/friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, description);
+pagesRaw = LOAD '/user/cs4433/project2/facebook_analytics/pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+accessRaw = LOAD '/user/cs4433/project2/facebook_analytics/access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
 
 
 -- TaskA
 clean1 = FILTER pagesRaw BY nationality == 'Grenada';
 data1 = FOREACH clean1 GENERATE name, hobby;
-STORE data1 INTO '/user/cs4433/project/facebook_analytics/output/users.csv' USING PigStorage(',');
+STORE data1 INTO '/user/cs4433/project2/facebook_analytics/output/users.csv' USING PigStorage(',');
 
 
 -- TaskB
@@ -18,13 +18,13 @@ topTen = LIMIT sort2 10;
 joinData2 = JOIN topTen BY whatPage, pagesRaw BY personID;
 data2 = FOREACH joinData2 GENERATE
     pagesRaw::personID AS personID, pagesRaw::name AS name, pagesRaw::nationality AS nationality;
-STORE data2 INTO '/user/cs4433/project/facebook_analytics/output/top10.csv' USING PigStorage(',');
+STORE data2 INTO '/user/cs4433/project2/facebook_analytics/output/top10.csv' USING PigStorage(',');
 
 
 -- TaskC
 countries = GROUP pagesRaw BY countryCode;
 data3 = FOREACH countries GENERATE group AS countryCode, COUNT(pagesRaw) AS countryCounts;
-STORE data3 INTO '/user/cs4433/project/facebook_analytics/output/countryCounts.csv' USING PigStorage(',');
+STORE data3 INTO '/user/cs4433/project2/facebook_analytics/output/countryCounts.csv' USING PigStorage(',');
 
 
 -- TaskD
@@ -34,7 +34,7 @@ join4 = JOIN pagesRaw BY personID LEFT OUTER, data4 BY personID;
 fdata = FOREACH join4 GENERATE
     pagesRaw::personID AS personID,
     (data4::count IS NULL ? 0 : data4::count) AS count;
-STORE fdata INTO '/user/cs4433/project/facebook_analytics/output/connectedness.csv' USING PigStorage(',');
+STORE fdata INTO '/user/cs4433/project2/facebook_analytics/output/connectedness.csv' USING PigStorage(',');
 
 
 -- TaskE
@@ -55,7 +55,7 @@ data5 = FOREACH join5 GENERATE
     adata::byWho AS byWho,
     adata::totalAccesses AS totalAccesses,
     disData::distinctPages AS distinctPages;
-STORE data5 INTO '/user/cs4433/project/facebook_analytics/output/favorites.csv' USING PigStorage(',');
+STORE data5 INTO '/user/cs4433/project2/facebook_analytics/output/favorites.csv' USING PigStorage(',');
 
 
 -- TaskF
@@ -73,7 +73,7 @@ fjoin6 = JOIN fNotClean BY personID, pagesRaw BY personID;
 data6 = FOREACH fjoin6 GENERATE
     fNotClean::personID AS personID,
     pagesRaw::name AS name;
-STORE data6 INTO '/user/cs4433/project/facebook_analytics/output/notAccessedFriends.csv' USING PigStorage(',');
+STORE data6 INTO '/user/cs4433/project2/facebook_analytics/output/notAccessedFriends.csv' USING PigStorage(',');
 
 
 /*
@@ -87,7 +87,7 @@ join7 = JOIN distinctPeople BY byWho LEFT OUTER, pagesRaw BY personID;
 data7 = FOREACH join7 GENERATE
     distinctPeople::byWho AS personID,
     pagesRaw::name AS name;
-STORE data7 INTO '/user/cs4433/project/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
+STORE data7 INTO '/user/cs4433/project2/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
 */
 
 
@@ -108,4 +108,4 @@ fdata8 = FOREACH join8 GENERATE
     filter8::personID AS personID,
     pagesRaw::name AS name,
     filter8::friendCount AS friendCount;
-STORE fdata8 INTO '/user/cs4433/project/facebook_analytics/output/popular.csv' USING PigStorage(',');*/
+STORE fdata8 INTO '/user/cs4433/project2/facebook_analytics/output/popular.csv' USING PigStorage(',');*/
