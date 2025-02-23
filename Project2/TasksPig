@@ -60,3 +60,25 @@ fdata = FOREACH join GENERATE
     disData::distinctPages AS distinctPages;
 STORE fdata INTO 'favorites.csv' USING PigStorage(',');
 
+
+
+//TaskF
+friendsRaw = LOAD 'friends.csv' USING PigStorage(',') AS (friendRel, personID, myFriend, dateOfFriend, Desc);
+pagesRaw = LOAD 'pages.csv' USING PigStorage(',') AS (personID, name, nationality, countryCode, hobby);
+accessRaw = LOAD 'access_logs.csv' USING PigStorage(',') AS (accessID, byWho, whatPage, typeOfAccess, accessTime);
+friends = FOREACH friendsRaw GENERATE personID, myFriend;
+logs = FOREACH accessRaw GENERATE byWho, whatPage;
+join = JOIN friends BY myFriend, logs BY byWho;
+fAccess = FOREACH join GENERATE
+    friends::personID AS personID,
+    friends::myFriend AS myFriend;
+frAccess = DISTINCT fAccess;
+njoin = JOIN friends BY (personID, myFriend)
+    LEFT OUTER, frAccess BY (personID, myFriend);
+fNot = FILTER njoin BY frAccess::personID IS NULL;
+fjoin = JOIN fNot BY personID, pagesRaw BY personID;
+data = FOREACH fjoin GENERATE
+    fNot::personID AS personID,
+    pagesRaw::name AS name;
+STORE data INTO 'notAccessedFriends.csv' USING PigStorage(',');
+
