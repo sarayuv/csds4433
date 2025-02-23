@@ -61,14 +61,13 @@ STORE data5 INTO '/user/cs4433/project/facebook_analytics/output/favorites.csv' 
 -- TaskF
 friends = FOREACH friendsRaw GENERATE personID, myFriend;
 logs = FOREACH accessRaw GENERATE byWho, whatPage;
-join6 = JOIN friends BY myFriend, logs BY byWho;
-fAccess = FOREACH join6 GENERATE
+join6a = JOIN friends BY myFriend, logs BY byWho;
+fAccess = FOREACH join6a GENERATE
     friends::personID AS personID,
     friends::myFriend AS myFriend;
 frAccess = DISTINCT fAccess;
-join6 = JOIN friends BY (personID, myFriend)
-    LEFT OUTER, frAccess BY (personID, myFriend);
-fNot = FILTER join6 BY frAccess::personID IS NULL;
+join6b = JOIN friends BY (personID, myFriend) LEFT OUTER, frAccess BY (personID, myFriend);
+fNot = FILTER join6b BY frAccess::personID IS NULL;
 fjoin6 = JOIN fNot BY personID, pagesRaw BY personID;
 data6 = FOREACH fjoin6 GENERATE
     fNot::personID AS personID,
@@ -77,11 +76,12 @@ STORE data6 INTO '/user/cs4433/project/facebook_analytics/output/notAccessedFrie
 
 
 -- TaskG
-filterDate = FILTER accessRaw BY ToDate(accessTime) <  DATE_SUB('2025-02-22', '14');
-dPeople = DISTINCT FOREACH filterDate GENERATE byWho;
-join7 = JOIN dPeople BY byWho LEFT OUTER, pagesRaw BY personID;
+filterDate = FILTER accessRaw BY ToDate(accessTime) < DATE_SUB('2025-02-22', '14');
+dPeople = FOREACH filterDate GENERATE byWho;
+distinctPeople = DISTINCT dPeople;
+join7 = JOIN distinctPeople BY byWho LEFT OUTER, pagesRaw BY personID;
 data7 = FOREACH join7 GENERATE
-    dPeople::byWho AS personID,
+    distinctPeople::byWho AS personID,
     pagesRaw::name AS name;
 STORE data7 INTO '/user/cs4433/project/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
 
@@ -91,9 +91,10 @@ friends = GROUP friendsRaw BY personID;
 data = FOREACH friends GENERATE
     group AS personID,
     COUNT(friendsRaw) AS friendCount;
-total = FOREACH (GROUP data ALL) GENERATE SUM(data.friendCount) AS tot;
-people = FOREACH (GROUP data ALL) GENERATE Count(data) AS peop;
-average = FOREACH (CROSS total, people) GENERATE total.tot / people.peop AS aver;
+total = FOREACH (GROUP data BY ALL) GENERATE SUM(data.friendCount) AS tot;
+people = FOREACH (GROUP data BY ALL) GENERATE COUNT(data) AS peop;
+crossData = CROSS total, people;
+average = FOREACH crossData GENERATE total.tot / people.peop AS aver;
 datAvg = CROSS data, average;
 filter8 = FILTER datAvg BY friendCount > average.aver;
 join8 = JOIN filter8 BY personID LEFT OUTER, pagesRaw BY personID;
