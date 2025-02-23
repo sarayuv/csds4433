@@ -13,7 +13,7 @@ STORE data1 INTO '/user/cs4433/project/facebook_analytics/output/users.csv' USIN
 -- TaskB
 accesses = GROUP accessRaw BY whatPage;
 pageCounts = FOREACH accesses GENERATE group AS whatPage, COUNT(accessRaw) AS pagecount;
-sort2 = ORDER pageCounts BY pageCount DESC;
+sort2 = ORDER pageCounts BY pagecount DESC;
 topTen = LIMIT sort2 10;
 joinData2 = JOIN topTen BY whatPage, pagesRaw BY personID;
 data2 = FOREACH joinData2 GENERATE
@@ -67,14 +67,16 @@ fAccess = FOREACH join6a GENERATE
     friends::myFriend AS myFriend;
 frAccess = DISTINCT fAccess;
 join6b = JOIN friends BY (personID, myFriend) LEFT OUTER, frAccess BY (personID, myFriend);
-fNot = FILTER join6b BY frAccess::personID IS NULL;
-fjoin6 = JOIN fNot BY personID, pagesRaw BY personID;
+fNot = FILTER join6b BY frAccess::myFriend IS NULL;
+fNotClean = FOREACH fNot GENERATE friends::personID AS personID;
+fjoin6 = JOIN fNotClean BY personID, pagesRaw BY personID;
 data6 = FOREACH fjoin6 GENERATE
-    fNot::personID AS personID,
+    fNotClean::personID AS personID,
     pagesRaw::name AS name;
 STORE data6 INTO '/user/cs4433/project/facebook_analytics/output/notAccessedFriends.csv' USING PigStorage(',');
 
 
+/*
 -- TaskG
 refDate = ToDate('2025-02-22');
 accessRawWithDate = FOREACH accessRaw GENERATE *, ToDate(accessTime) AS accessDate;
@@ -86,8 +88,10 @@ data7 = FOREACH join7 GENERATE
     distinctPeople::byWho AS personID,
     pagesRaw::name AS name;
 STORE data7 INTO '/user/cs4433/project/facebook_analytics/output/disconnected.csv' USING PigStorage(',');
+*/
 
 
+/*
 -- TaskH
 friends = GROUP friendsRaw BY personID;
 data = FOREACH friends GENERATE
@@ -104,4 +108,4 @@ fdata8 = FOREACH join8 GENERATE
     filter8::personID AS personID,
     pagesRaw::name AS name,
     filter8::friendCount AS friendCount;
-STORE fdata8 INTO '/user/cs4433/project/facebook_analytics/output/popular.csv' USING PigStorage(',');
+STORE fdata8 INTO '/user/cs4433/project/facebook_analytics/output/popular.csv' USING PigStorage(',');*/
