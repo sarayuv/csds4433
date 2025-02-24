@@ -76,11 +76,11 @@ data6 = FOREACH fjoin6 GENERATE
 STORE data6 INTO '/user/cs4433/project2/facebook_analytics/output/notAccessedFriends.csv' USING PigStorage(',');
 
 
+
 -- TaskG
-dates = FOREACH accessRaw GENERATE byWho, ToDate(accessTime, 'yyyy-MM-dd HH:mm:ss') AS aDate;
+dates = FOREACH accessRaw GENERATE byWho, ToDate(accessTime, 'MM/dd/yyyy HH:mm') AS aDate;
 filterDate = FILTER dates BY aDate < SubtractDuration(currentTime(), '14d');
-dPeople = FOREACH filterDate GENERATE byWho;
-dPeople = DISTINCT dPeople;
+dPeople = DISTINCT FOREACH filterDate GENERATE byWho;
 join7 = JOIN dPeople BY byWho LEFT OUTER, pagesRaw BY personID;
 data7 = FOREACH join7 GENERATE
     dPeople::byWho AS personID,
