@@ -3,8 +3,8 @@ from faker import Faker
 import os
 
 fake = Faker()
-num_customers = 50000
-num_purchases = 5000000
+num_customers = 500
+num_purchases = 3000
 
 # Create directory
 dir_path = 'data'
