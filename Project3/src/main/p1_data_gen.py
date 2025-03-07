@@ -18,26 +18,26 @@ table_assignments = np.random.randint(1, 101, size=num_people)
 # Assume 5% of people are sick
 flu_test_results = np.random.choice(["sick", "not-sick"], size=num_people, p=[0.05, 0.95])
 
-# Create the Meta-Event dataset
-meta_event_data = {
+# Create the Mega-Event dataset
+mega_event_data = {
     "id": person_ids,
     "name": names,
     "table": table_assignments,
     "test": flu_test_results
 }
-meta_event_df = pd.DataFrame(meta_event_data)
+mega_event_df = pd.DataFrame(mega_event_data)
 
-# Create the Meta-Event-No-Disclosure dataset
+# Create the Mega-Event-No-Disclosure dataset
 # This dataset excludes the 'test' column
-meta_event_no_disclosure_df = meta_event_df.drop(columns=["test"])
+mega_event_no_disclosure_df = mega_event_df.drop(columns=["test"])
 
 # Create the Reported-Illnesses dataset
 # This dataset contains only people who tested sick
-reported_illnesses_df = meta_event_df[meta_event_df["test"] == "sick"][["id", "test"]]
+reported_illnesses_df = mega_event_df[mega_event_df["test"] == "sick"][["id", "test"]]
 
 # Save datasets to files
-meta_event_df.to_csv("Meta-Event.csv", index=False)
-meta_event_no_disclosure_df.to_csv("Meta-Event-No-Disclosure.csv", index=False)
+mega_event_df.to_csv("Mega-Event.csv", index=False)
+mega_event_no_disclosure_df.to_csv("Mega-Event-No-Disclosure.csv", index=False)
 reported_illnesses_df.to_csv("Reported-Illnesses.csv", index=False)
 
 print("Datasets created successfully!")
