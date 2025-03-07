@@ -104,7 +104,30 @@ object P1Queries {
     }.saveAsTextFile(outputDir4)
 
 
+    
     // Query 5
+    val illRDD = riDataRDD.map { line =>
+      val columns = line.split(",")
+      (columns(0), 1) // (id, 1)
+    }
+
+    val values = mndDataRDD.map { line =>
+      val columns = line.split(",")
+      (columns(0), (columns(2), columns(1))) // (id, (table, name))
+    }
+
+    val sickTRDD = values.join(illRDD).map {case (_, _, table, _) => (table, 1)}
+
+    val unsickPeopleJoin = values.map{
+        case (id, (name, table)) => (table, (id, name))
+      }.leftOuterJoin(sickTRDD).map {
+      case (id, (_, name)) => (id, name)
+    }
+
+    val healthyShareTable = unsickPeopleJoin.filter{
+      case (_, ((id, name), test) => test == "not-sick"
+    }.map { case (_, ((id, name), _)) => (id, name)
+    }.distinct()
 
 
     sc.stop()
